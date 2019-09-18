@@ -26,6 +26,10 @@ This section lists purely syntactic changes that do not affect the behavior of e
 
 * Libraries have to implement all their functions, not only the internal ones.
 
+* Member-access to ``length`` of arrays is now always read-only, even for storage arrays. It's no
+  longer possible to resize storage arrays assigning a new value to their length. Use ``push()``,
+  ``push(value)`` or ``pop()`` instead, or assign a full array, which will of course overwrite existing content.
+
 * New reserved keywords: ``virtual``.
 
 * The names of variables declared in inline assembly may no longer end in ``_slot`` or ``_offset``.
@@ -80,6 +84,9 @@ This section gives detailed instructions on how to update prior code for every b
   documentation so long as the notices are in the order they appear in the tuple return type.
 
 * Choose unique identifiers for variable declarations in inline assembly that do not conflict with declartions outside the inline assembly block.
+
+* Change ``array.length++`` to ``array.push()`` to increase, and use ``pop()`` to decrease
+  the length of a storage array.
 
 New Features
 ============
