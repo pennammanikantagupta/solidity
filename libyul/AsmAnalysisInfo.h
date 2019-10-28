@@ -22,10 +22,9 @@
 
 #include <libyul/AsmDataForward.h>
 
-#include <boost/variant.hpp>
-
 #include <map>
 #include <memory>
+#include <variant>
 #include <vector>
 
 namespace yul

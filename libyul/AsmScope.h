@@ -26,11 +26,11 @@
 
 #include <libdevcore/Visitor.h>
 
-#include <boost/variant.hpp>
 #include <boost/optional.hpp>
 
 #include <functional>
 #include <memory>
+#include <variant>
 
 namespace yul
 {
@@ -48,7 +48,7 @@ struct Scope
 		std::vector<YulType> returns;
 	};
 
-	using Identifier = boost::variant<Variable, Label, Function>;
+	using Identifier = std::variant<Variable, Label, Function>;
 	using Visitor = dev::GenericVisitor<Variable const, Label const, Function const>;
 	using NonconstVisitor = dev::GenericVisitor<Variable, Label, Function>;
 
@@ -74,7 +74,7 @@ struct Scope
 	{
 		if (Identifier* id = lookup(_name))
 		{
-			boost::apply_visitor(_visitor, *id);
+			std::visit(_visitor, *id);
 			return true;
 		}
 		else

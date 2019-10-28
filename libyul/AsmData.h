@@ -28,11 +28,11 @@
 #include <libevmasm/Instruction.h>
 #include <liblangutil/SourceLocation.h>
 
-#include <boost/variant.hpp>
 #include <boost/noncopyable.hpp>
 
 #include <map>
 #include <memory>
+#include <variant>
 
 namespace yul
 {
@@ -83,9 +83,10 @@ struct Break { langutil::SourceLocation location; };
 /// Continue statement (valid within for loop)
 struct Continue { langutil::SourceLocation location; };
 
-struct LocationExtractor: boost::static_visitor<langutil::SourceLocation>
+struct LocationExtractor
 {
-	template <class T> langutil::SourceLocation operator()(T const& _node) const
+	using result_type = langutil::SourceLocation;
+	template <typename T> langutil::SourceLocation const& operator()(T const& _node) const noexcept
 	{
 		return _node.location;
 	}
@@ -94,7 +95,7 @@ struct LocationExtractor: boost::static_visitor<langutil::SourceLocation>
 /// Extracts the source location from an inline assembly node.
 template <class T> inline langutil::SourceLocation locationOf(T const& _node)
 {
-	return boost::apply_visitor(LocationExtractor(), _node);
+	return std::visit(LocationExtractor{}, _node);
 }
 
 }

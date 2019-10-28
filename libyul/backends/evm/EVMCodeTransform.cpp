@@ -80,14 +80,14 @@ void VariableReferenceCounter::operator()(Block const& _block)
 
 void VariableReferenceCounter::increaseRefIfFound(YulString _variableName)
 {
-	m_scope->lookup(_variableName, Scope::Visitor(
+	m_scope->lookup(_variableName, dev::GenericVisitor{
 		[=](Scope::Variable const& _var)
 		{
 			++m_context.variableReferences[&_var];
 		},
 		[=](Scope::Label const&) { },
 		[=](Scope::Function const&) { }
-	));
+	});
 }
 
 CodeTransform::CodeTransform(
@@ -146,9 +146,9 @@ void CodeTransform::freeUnusedVariables()
 		return;
 
 	for (auto const& identifier: m_scope->identifiers)
-		if (identifier.second.type() == typeid(Scope::Variable))
+		if (holds_alternative<Scope::Variable>(identifier.second))
 		{
-			Scope::Variable const& var = boost::get<Scope::Variable>(identifier.second);
+			Scope::Variable const& var = get<Scope::Variable>(identifier.second);
 			if (m_variablesScheduledForDeletion.count(&var))
 				deleteVariable(var);
 		}
@@ -179,7 +179,7 @@ void CodeTransform::operator()(VariableDeclaration const& _varDecl)
 	int height = m_assembly.stackHeight();
 	if (_varDecl.value)
 	{
-		boost::apply_visitor(*this, *_varDecl.value);
+		visit(*this, *_varDecl.value);
 		expectDeposit(numVariables, height);
 	}
 	else
@@ -193,7 +193,7 @@ void CodeTransform::operator()(VariableDeclaration const& _varDecl)
 	for (int varIndex = numVariables - 1; varIndex >= 0; --varIndex)
 	{
 		YulString varName = _varDecl.variables[varIndex].name;
-		auto& var = boost::get<Scope::Variable>(m_scope->identifiers.at(varName));
+		auto& var = get<Scope::Variable>(m_scope->identifiers.at(varName));
 		m_context->variableStackHeights[&var] = height + varIndex;
 		if (!m_allowStackOpt)
 			continue;
@@ -242,7 +242,7 @@ void CodeTransform::stackError(StackTooDeepError _error, int _targetStackHeight)
 void CodeTransform::operator()(Assignment const& _assignment)
 {
 	int height = m_assembly.stackHeight();
-	boost::apply_visitor(*this, *_assignment.value);
+	visit(*this, *_assignment.value);
 	expectDeposit(_assignment.variableNames.size(), height);
 
 	m_assembly.setSourceLocation(_assignment.location);
@@ -261,7 +261,7 @@ void CodeTransform::operator()(StackAssignment const& _assignment)
 void CodeTransform::operator()(ExpressionStatement const& _statement)
 {
 	m_assembly.setSourceLocation(_statement.location);
-	boost::apply_visitor(*this, _statement.expression);
+	visit(*this, _statement.expression);
 	checkStackHeight(&_statement);
 }
 
@@ -271,7 +271,7 @@ void CodeTransform::operator()(Label const& _label)
 	m_assembly.setSourceLocation(_label.location);
 	solAssert(m_scope, "");
 	solAssert(m_scope->identifiers.count(_label.name), "");
-	Scope::Label& label = boost::get<Scope::Label>(m_scope->identifiers.at(_label.name));
+	Scope::Label& label = get<Scope::Label>(m_scope->identifiers.at(_label.name));
 	m_assembly.appendLabel(labelID(label));
 	checkStackHeight(&_label);
 }
@@ -300,11 +300,11 @@ void CodeTransform::operator()(FunctionCall const& _call)
 		}
 
 		Scope::Function* function = nullptr;
-		solAssert(m_scope->lookup(_call.functionName.name, Scope::NonconstVisitor(
+		solAssert(m_scope->lookup(_call.functionName.name, dev::GenericVisitor{
 			[=](Scope::Variable&) { solAssert(false, "Expected function name."); },
 			[=](Scope::Label&) { solAssert(false, "Expected function name."); },
 			[&](Scope::Function& _function) { function = &_function; }
-		)), "Function name not found.");
+		}), "Function name not found.");
 		solAssert(function, "");
 		solAssert(function->arguments.size() == _call.arguments.size(), "");
 		for (auto const& arg: _call.arguments | boost::adaptors::reversed)
@@ -340,7 +340,7 @@ void CodeTransform::operator()(FunctionalInstruction const& _instruction)
 			solAssert(_instruction.arguments.size() == 1, "");
 		}
 		m_assembly.setSourceLocation(_instruction.location);
-		auto label = labelFromIdentifier(boost::get<Identifier>(_instruction.arguments.at(0)));
+		auto label = labelFromIdentifier(get<Identifier>(_instruction.arguments.at(0)));
 		if (isJumpI)
 			m_assembly.appendJumpToIf(label);
 		else
@@ -361,7 +361,7 @@ void CodeTransform::operator()(Identifier const& _identifier)
 	m_assembly.setSourceLocation(_identifier.location);
 	// First search internals, then externals.
 	solAssert(m_scope, "");
-	if (m_scope->lookup(_identifier.name, Scope::NonconstVisitor(
+	if (m_scope->lookup(_identifier.name, dev::GenericVisitor{
 		[=](Scope::Variable& _var)
 		{
 			// TODO: opportunity for optimization: Do not DUP if this is the last reference
@@ -381,7 +381,7 @@ void CodeTransform::operator()(Identifier const& _identifier)
 		{
 			solAssert(false, "Function not removed during desugaring.");
 		}
-	)))
+	}))
 	{
 		return;
 	}
@@ -476,7 +476,7 @@ void CodeTransform::operator()(FunctionDefinition const& _function)
 {
 	solAssert(m_scope, "");
 	solAssert(m_scope->identifiers.count(_function.name), "");
-	Scope::Function& function = boost::get<Scope::Function>(m_scope->identifiers.at(_function.name));
+	Scope::Function& function = get<Scope::Function>(m_scope->identifiers.at(_function.name));
 
 	int const localStackAdjustment = m_evm15 ? 0 : 1;
 	int height = localStackAdjustment;
@@ -485,7 +485,7 @@ void CodeTransform::operator()(FunctionDefinition const& _function)
 	solAssert(varScope, "");
 	for (auto const& v: _function.parameters | boost::adaptors::reversed)
 	{
-		auto& var = boost::get<Scope::Variable>(varScope->identifiers.at(v.name));
+		auto& var = get<Scope::Variable>(varScope->identifiers.at(v.name));
 		m_context->variableStackHeights[&var] = height++;
 	}
 
@@ -503,7 +503,7 @@ void CodeTransform::operator()(FunctionDefinition const& _function)
 
 	for (auto const& v: _function.returnVariables)
 	{
-		auto& var = boost::get<Scope::Variable>(varScope->identifiers.at(v.name));
+		auto& var = get<Scope::Variable>(varScope->identifiers.at(v.name));
 		m_context->variableStackHeights[&var] = height++;
 		// Preset stack slots for return variables to zero.
 		m_assembly.appendConstant(u256(0));
@@ -680,14 +680,14 @@ void CodeTransform::operator()(Block const& _block)
 AbstractAssembly::LabelID CodeTransform::labelFromIdentifier(Identifier const& _identifier)
 {
 	AbstractAssembly::LabelID label = AbstractAssembly::LabelID(-1);
-	if (!m_scope->lookup(_identifier.name, Scope::NonconstVisitor(
+	if (!m_scope->lookup(_identifier.name, dev::GenericVisitor{
 		[=](Scope::Variable&) { solAssert(false, "Expected label"); },
 		[&](Scope::Label& _label)
 		{
 			label = labelID(_label);
 		},
 		[=](Scope::Function&) { solAssert(false, "Expected label"); }
-	)))
+	}))
 	{
 		solAssert(false, "Identifier not found.");
 	}
@@ -717,7 +717,7 @@ AbstractAssembly::LabelID CodeTransform::functionEntryID(YulString _name, Scope:
 void CodeTransform::visitExpression(Expression const& _expression)
 {
 	int height = m_assembly.stackHeight();
-	boost::apply_visitor(*this, _expression);
+	visit(*this, _expression);
 	expectDeposit(1, height);
 }
 
@@ -730,7 +730,9 @@ void CodeTransform::visitStatements(vector<Statement> const& _statements)
 	for (auto const& statement: _statements)
 	{
 		freeUnusedVariables();
-		auto const* functionDefinition = boost::get<FunctionDefinition>(&statement);
+		auto const* functionDefinition = holds_alternative<FunctionDefinition>(statement)
+			? &get<FunctionDefinition>(statement)
+			: nullptr;
 		if (functionDefinition && !jumpTarget)
 		{
 			m_assembly.setSourceLocation(locationOf(statement));
@@ -743,7 +745,7 @@ void CodeTransform::visitStatements(vector<Statement> const& _statements)
 			jumpTarget = boost::none;
 		}
 
-		boost::apply_visitor(*this, statement);
+		visit(*this, statement);
 	}
 	// we may have a leftover jumpTarget
 	if (jumpTarget)
@@ -761,9 +763,9 @@ void CodeTransform::finalizeBlock(Block const& _block, int blockStartStackHeight
 	// pop variables
 	solAssert(m_info.scopes.at(&_block).get() == m_scope, "");
 	for (auto const& id: m_scope->identifiers)
-		if (id.second.type() == typeid(Scope::Variable))
+		if (holds_alternative<Scope::Variable>(id.second))
 		{
-			Scope::Variable const& var = boost::get<Scope::Variable>(id.second);
+			Scope::Variable const& var = get<Scope::Variable>(id.second);
 			if (m_allowStackOpt)
 			{
 				solAssert(!m_context->variableStackHeights.count(&var), "");
@@ -791,7 +793,7 @@ void CodeTransform::generateAssignment(Identifier const& _variableName)
 	solAssert(m_scope, "");
 	if (auto var = m_scope->lookup(_variableName.name))
 	{
-		Scope::Variable const& _var = boost::get<Scope::Variable>(*var);
+		Scope::Variable const& _var = get<Scope::Variable>(*var);
 		if (int heightDiff = variableHeightDiff(_var, _variableName.name, true))
 			m_assembly.appendInstruction(dev::eth::swapInstruction(heightDiff - 1));
 		m_assembly.appendInstruction(dev::eth::Instruction::POP);

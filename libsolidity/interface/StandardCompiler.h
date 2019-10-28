@@ -25,7 +25,8 @@
 #include <libsolidity/interface/CompilerStack.h>
 
 #include <boost/optional.hpp>
-#include <boost/variant.hpp>
+
+#include <variant>
 
 namespace dev
 {
@@ -73,7 +74,7 @@ private:
 
 	/// Parses the input json (and potentially invokes the read callback) and either returns
 	/// it in condensed form or an error as a json object.
-	boost::variant<InputsAndSettings, Json::Value> parseInput(Json::Value const& _input);
+	std::variant<InputsAndSettings, Json::Value> parseInput(Json::Value const& _input);
 
 	Json::Value compileSolidity(InputsAndSettings _inputsAndSettings);
 	Json::Value compileYul(InputsAndSettings _inputsAndSettings);

@@ -29,10 +29,10 @@
 
 #include <liblangutil/SourceLocation.h>
 
-#include <boost/variant.hpp>
 #include <boost/optional.hpp>
 
 #include <set>
+#include <variant>
 
 namespace yul
 {

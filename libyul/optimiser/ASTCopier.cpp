@@ -155,12 +155,12 @@ Statement ASTCopier::operator ()(Block const& _block)
 
 Expression ASTCopier::translate(Expression const& _expression)
 {
-	return _expression.apply_visitor(static_cast<ExpressionCopier&>(*this));
+	return visit(*this, _expression);
 }
 
 Statement ASTCopier::translate(Statement const& _statement)
 {
-	return _statement.apply_visitor(static_cast<StatementCopier&>(*this));
+	return visit(*this, _statement);
 }
 
 Block ASTCopier::translate(Block const& _block)

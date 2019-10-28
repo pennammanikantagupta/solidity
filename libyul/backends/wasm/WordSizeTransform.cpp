@@ -84,13 +84,13 @@ void WordSizeTransform::operator()(Block& _block)
 		_block.statements,
 		[&](Statement& _s) -> boost::optional<vector<Statement>>
 		{
-			if (_s.type() == typeid(VariableDeclaration))
+			if (holds_alternative<VariableDeclaration>(_s))
 			{
-				VariableDeclaration& varDecl = boost::get<VariableDeclaration>(_s);
+				VariableDeclaration& varDecl = get<VariableDeclaration>(_s);
 				if (
 					!varDecl.value ||
-					varDecl.value->type() == typeid(FunctionalInstruction) ||
-					varDecl.value->type() == typeid(FunctionCall)
+					holds_alternative<FunctionalInstruction>(*varDecl.value) ||
+					holds_alternative<FunctionCall>(*varDecl.value)
 				)
 				{
 					if (varDecl.value) visit(*varDecl.value);
@@ -98,8 +98,8 @@ void WordSizeTransform::operator()(Block& _block)
 					return boost::none;
 				}
 				else if (
-					varDecl.value->type() == typeid(Identifier) ||
-					varDecl.value->type() == typeid(Literal)
+					holds_alternative<Identifier>(*varDecl.value) ||
+					holds_alternative<Literal>(*varDecl.value)
 				)
 				{
 					yulAssert(varDecl.variables.size() == 1, "");
@@ -119,13 +119,13 @@ void WordSizeTransform::operator()(Block& _block)
 				else
 					yulAssert(false, "");
 			}
-			else if (_s.type() == typeid(Assignment))
+			else if (holds_alternative<Assignment>(_s))
 			{
-				Assignment& assignment = boost::get<Assignment>(_s);
+				Assignment& assignment = get<Assignment>(_s);
 				yulAssert(assignment.value, "");
 				if (
-					assignment.value->type() == typeid(FunctionalInstruction) ||
-					assignment.value->type() == typeid(FunctionCall)
+					holds_alternative<FunctionalInstruction>(*assignment.value) ||
+					holds_alternative<FunctionCall>(*assignment.value)
 				)
 				{
 					if (assignment.value) visit(*assignment.value);
@@ -133,8 +133,8 @@ void WordSizeTransform::operator()(Block& _block)
 					return boost::none;
 				}
 				else if (
-					assignment.value->type() == typeid(Identifier) ||
-					assignment.value->type() == typeid(Literal)
+					holds_alternative<Identifier>(*assignment.value) ||
+					holds_alternative<Literal>(*assignment.value)
 				)
 				{
 					yulAssert(assignment.variableNames.size() == 1, "");
@@ -154,8 +154,8 @@ void WordSizeTransform::operator()(Block& _block)
 				else
 					yulAssert(false, "");
 			}
-			else if (_s.type() == typeid(Switch))
-				return handleSwitch(boost::get<Switch>(_s));
+			else if (holds_alternative<Switch>(_s))
+				return handleSwitch(get<Switch>(_s));
 			else
 				visit(_s);
 			return boost::none;
@@ -294,7 +294,7 @@ std::vector<Statement> WordSizeTransform::handleSwitch(Switch& _switch)
 	}
 	vector<YulString> splitExpressions;
 	for (auto const& expr: expandValue(*_switch.expression))
-		splitExpressions.emplace_back(boost::get<Identifier>(*expr).name);
+		splitExpressions.emplace_back(get<Identifier>(*expr).name);
 
 	ret += handleSwitchInternal(
 		_switch.location,
@@ -324,15 +324,15 @@ array<YulString, 4> WordSizeTransform::generateU64IdentifierNames(YulString cons
 array<unique_ptr<Expression>, 4> WordSizeTransform::expandValue(Expression const& _e)
 {
 	array<unique_ptr<Expression>, 4> ret;
-	if (_e.type() == typeid(Identifier))
+	if (holds_alternative<Identifier>(_e))
 	{
-		Identifier const& id = boost::get<Identifier>(_e);
+		Identifier const& id = get<Identifier>(_e);
 		for (int i = 0; i < 4; i++)
 			ret[i] = make_unique<Expression>(Identifier{id.location, m_variableMapping.at(id.name)[i]});
 	}
-	else if (_e.type() == typeid(Literal))
+	else if (holds_alternative<Literal>(_e))
 	{
-		Literal const& lit = boost::get<Literal>(_e);
+		Literal const& lit = get<Literal>(_e);
 		u256 val = valueOfLiteral(lit);
 		for (int i = 3; i >= 0; i--)
 		{

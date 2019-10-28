@@ -364,19 +364,19 @@ boost::optional<pair<YulString, YulString>> DataFlowAnalyzer::isSimpleStore(
 		_store == dev::eth::Instruction::SSTORE,
 		""
 	);
-	if (_statement.expression.type() == typeid(FunctionCall))
+	if (holds_alternative<FunctionCall>(_statement.expression))
 	{
-		FunctionCall const& funCall = boost::get<FunctionCall>(_statement.expression);
+		FunctionCall const& funCall = get<FunctionCall>(_statement.expression);
 		if (EVMDialect const* dialect = dynamic_cast<EVMDialect const*>(&m_dialect))
 			if (auto const* builtin = dialect->builtin(funCall.functionName.name))
 				if (builtin->instruction == _store)
 					if (
-						funCall.arguments.at(0).type() == typeid(Identifier) &&
-						funCall.arguments.at(1).type() == typeid(Identifier)
+						holds_alternative<Identifier>(funCall.arguments.at(0)) &&
+						holds_alternative<Identifier>(funCall.arguments.at(1))
 					)
 					{
-						YulString key = boost::get<Identifier>(funCall.arguments.at(0)).name;
-						YulString value = boost::get<Identifier>(funCall.arguments.at(1)).name;
+						YulString key = get<Identifier>(funCall.arguments.at(0)).name;
+						YulString value = get<Identifier>(funCall.arguments.at(1)).name;
 						return make_pair(key, value);
 					}
 	}

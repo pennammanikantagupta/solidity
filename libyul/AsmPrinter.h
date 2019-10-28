@@ -26,12 +26,12 @@
 
 #include <libyul/YulString.h>
 
-#include <boost/variant.hpp>
+#include <variant>
 
 namespace yul
 {
 
-class AsmPrinter: public boost::static_visitor<std::string>
+class AsmPrinter
 {
 public:
 	explicit AsmPrinter(bool _yul = false): m_yul(_yul) {}

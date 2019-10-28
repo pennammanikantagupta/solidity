@@ -29,9 +29,9 @@ void ForLoopInitRewriter::operator()(Block& _block)
 		_block.statements,
 		[&](Statement& _stmt) -> boost::optional<vector<Statement>>
 		{
-			if (_stmt.type() == typeid(ForLoop))
+			if (holds_alternative<ForLoop>(_stmt))
 			{
-				auto& forLoop = boost::get<ForLoop>(_stmt);
+				auto& forLoop = get<ForLoop>(_stmt);
 				(*this)(forLoop.pre);
 				(*this)(forLoop.body);
 				(*this)(forLoop.post);

@@ -31,7 +31,7 @@ void ForLoopConditionIntoBody::run(OptimiserStepContext& _context, Block& _ast)
 
 void ForLoopConditionIntoBody::operator()(ForLoop& _forLoop)
 {
-	if (m_dialect.booleanNegationFunction() && _forLoop.condition->type() != typeid(Literal))
+	if (m_dialect.booleanNegationFunction() && !holds_alternative<Literal>(*_forLoop.condition))
 	{
 		langutil::SourceLocation loc = locationOf(*_forLoop.condition);
 		_forLoop.body.statements.insert(
