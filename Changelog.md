@@ -23,6 +23,7 @@ Language Features:
 
 
 Compiler Features:
+ * C API (``libsolc``): Introduce context parameter
  * Code Generator: Use SELFBALANCE for ``address(this).balance`` if using Istanbul EVM
 
 
