@@ -245,19 +245,24 @@ void ContractLevelChecker::checkIllegalOverrides(ContractDefinition const& _cont
 
 	for (FunctionDefinition const* function: _contract.definedFunctions())
 	{
+		if (function->isConstructor())
+			continue;
+
 		if (contains_if(modSet, MatchByName{function->name()}))
 			m_errorReporter.typeError(function->location(), "Override changes modifier to function.");
 
-		// Skip if not overridable
-		if (!function->isOverridable())
-			continue;
+		if (function->isVirtual() && function->annotation().contract->isInterface())
+			m_errorReporter.warning(function->location(), "Interface functions are implicitly \"virtual\"");
 
 		// No inheriting functions found
-		if (funcSet.find(function) == funcSet.cend() && function->overrides())
-			m_errorReporter.typeError(
-				function->overrides()->location(),
-				"Function has override specified but does not override anything."
-			);
+		if (!funcSet.count(function))
+		{
+			if (function->overrides())
+				m_errorReporter.typeError(
+					function->overrides()->location(),
+					"Function has override specified but does not override anything."
+				);
+		}
 
 		checkOverrideList(funcSet, *function);
 	}
@@ -276,6 +281,12 @@ bool ContractLevelChecker::checkFunctionOverride(FunctionDefinition const& _func
 	if (!_function.overrides())
 	{
 		overrideError(_function, _super, "Overriding function is missing 'override' specifier.");
+		success = false;
+	}
+
+	if (!_super.isVirtual() && !_super.annotation().contract->isInterface())
+	{
+		overrideError(_function, _super, "Trying to override non-virtual function. Did you forget to add \"virtual\"?");
 		success = false;
 	}
 
@@ -649,10 +660,10 @@ void ContractLevelChecker::checkAmbiguousOverrides(ContractDefinition const& _co
 			continue;
 
 		// Not an overridable function
-		if (!(*it)->isOverridable())
+		if ((*it)->isConstructor())
 		{
 			for (begin++; begin != end; begin++)
-				solAssert(!(*begin)->isOverridable(), "All functions in range expected to be non-overridable!");
+				solAssert((*begin)->isConstructor(), "All functions in range expected to be constructors!");
 			continue;
 		}
 
@@ -781,8 +792,7 @@ void ContractLevelChecker::checkOverrideList(FunctionMultiSet const& _funcSet, F
 	for (auto [begin, end] = _funcSet.equal_range(&_function); begin != end; begin++)
 	{
 		// Validate the override
-		if (!checkFunctionOverride(_function, **begin))
-			break;
+		checkFunctionOverride(_function, **begin);
 
 		expectedContracts.insert((*begin)->annotation().contract);
 	}

@@ -621,6 +621,7 @@ public:
 	std::vector<ASTPointer<VariableDeclaration>> const& returnParameters() const { return m_returnParameters->parameters(); }
 	ParameterList const& parameterList() const { return *m_parameters; }
 	ASTPointer<ParameterList> const& returnParameterList() const { return m_returnParameters; }
+	bool isVirtual() const { return m_isVirtual; }
 
 protected:
 	ASTPointer<ParameterList> m_parameters;
@@ -692,7 +693,6 @@ public:
 	bool isFallback() const { return m_kind == Token::Fallback; }
 	bool isReceive() const { return m_kind == Token::Receive; }
 	Token kind() const { return m_kind; }
-	bool isOverridable() const { return !isConstructor(); }
 	bool isPayable() const { return m_stateMutability == StateMutability::Payable; }
 	std::vector<ASTPointer<ModifierInvocation>> const& modifiers() const { return m_functionModifiers; }
 	Block const& body() const { solAssert(m_body, ""); return *m_body; }
