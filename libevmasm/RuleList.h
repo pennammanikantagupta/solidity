@@ -399,7 +399,7 @@ std::vector<SimplificationRule<Pattern>> simplificationRuleListPart7(
 			}, {
 				// Y+(X+A) -> (Y+X)+A
 				op(Y, opXA),
-				[=]() -> Pattern { return op(op(X, Y), A); },
+				[=]() -> Pattern { return op(op(Y, X), A); },
 				false
 			}};
 		}
