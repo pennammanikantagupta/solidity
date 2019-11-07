@@ -2,11 +2,14 @@ contract C {
     uint[] storageArray;
     function set_get_length(uint256 len) public returns (uint256)
     {
-        storageArray = new uint[](len);
+        //storageArray = new uint[](len);
+        while(storageArray.length < len) storageArray.push();
+        while(storageArray.length > len) storageArray.pop();
         return storageArray.length;
     }
 }
 // ====
+// compileViaYul: true
 // EVMVersion: >=petersburg
 // ----
 // set_get_length(uint256): 0 -> 0
