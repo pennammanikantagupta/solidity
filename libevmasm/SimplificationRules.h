@@ -26,6 +26,8 @@
 #include <libevmasm/ExpressionClasses.h>
 #include <libevmasm/SimplificationRule.h>
 
+#include <libdevcore/CommonData.h>
+
 #include <boost/noncopyable.hpp>
 
 #include <functional>
@@ -87,12 +89,14 @@ public:
 	using Expression = ExpressionClasses::Expression;
 	using Id = ExpressionClasses::Id;
 
-	using Builtins = dev::eth::EVMBuiltins;
+	using Builtins = dev::eth::EVMBuiltins<Pattern>;
 	static constexpr size_t WordSize = 256;
 	using Word = u256;
 
 	// Matches a specific constant value.
 	Pattern(unsigned _value): Pattern(u256(_value)) {}
+	Pattern(int _value): Pattern(u256(_value)) {}
+	Pattern(long unsigned _value): Pattern(u256(_value)) {}
 	// Matches a specific constant value.
 	Pattern(u256 const& _value): m_type(Push), m_requireDataMatch(true), m_data(std::make_shared<u256>(_value)) {}
 	// Matches a specific assembly item type or anything if not given.
